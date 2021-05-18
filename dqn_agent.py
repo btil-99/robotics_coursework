@@ -70,7 +70,7 @@ class DQNAgent(Node):
         super().__init__('dqn_agent')
 
         # Stage
-        self.stage = int(stage)
+        self.stage = 2
         self.train_mode = True
         # State size and action size
         self.state_size = 26  # 180 lidar rays
@@ -79,7 +79,7 @@ class DQNAgent(Node):
 
         # DQN hyperparameter
         self.discount_factor = 0.99
-        self.learning_rate = 0.0007
+        self.learning_rate = 0.0007  # 0.001
         self.epsilon = 1.0
         self.step_counter = 0
         self.epsilon_decay = 20000 * self.stage
@@ -100,14 +100,16 @@ class DQNAgent(Node):
         # Load saved models
         self.load_model = False
         self.load_episode = 0
-        self.model_path = 'stage' + str(self.stage) + '_episode' + str(self.load_episode) + '.h5'
-        self.json_path = self.model_path.replace('.h5','.json')
+        self.file_path = 'stage' + str(self.stage) + '_episode' + str(self.load_episode)
+        self.model_path = self.file_path + '.h5'
+        self.json_path = self.file_path + '.json'
 
         if self.load_model:
             self.model.set_weights(load_model(self.model_path).get_weights())
             with open(self.json_path) as outfile:
                 param = json.load(outfile)
                 self.epsilon = param.get('epsilon')
+                print(f'Epsilon file loaded. Initial epsilon value: {self.epsilon}.')
 
         # Tensorboard Log
         if LOGGING:
@@ -303,7 +305,7 @@ def main(args=sys.argv[1]):
     dqn_agent = DQNAgent(args)
     rclpy.spin(dqn_agent)
 
-    dqn_agent.destroy()
+    dqn_agent.destroy_node()
     rclpy.shutdown()
 
 

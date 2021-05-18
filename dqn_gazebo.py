@@ -132,13 +132,9 @@ class GazeboInterface(Node):
             else:
                 index += 1
 
-        """if self.stage != 4:
-            self.entity_pose_x = random.randrange(-20, 20) / 10
-            self.entity_pose_y = random.randrange(-20, 20) / 10
-        else:
-            goal_pose_list = [[1.0, 0.0], [2.0, -1.5], [0.0, -2.0], [2.0, 2.0], [0.8, 2.0],
-                              [-1.9, 1.9], [-1.9, 0.2], [-1.9, -0.5], [-2.0, -2.0], [-0.5, -1.0], [-0.5, 2.0], [2.0, -0.5]]
-            rand_index = random.randint(0, 11)"""
+        # self.entity_pose_x = random.randrange(-20, 20) / 10
+        # self.entity_pose_y = random.randrange(-20, 20) / 10
+        
         self.entity_pose_x = goal_pose_list[index][0]
         self.entity_pose_y = goal_pose_list[index][1]
 
