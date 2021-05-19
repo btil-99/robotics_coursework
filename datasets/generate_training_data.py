@@ -5,6 +5,9 @@ from os.path import join
 
 
 class ImageGenerator:
+    """
+    Class. Provides image generation methods from given input paths.
+    """
 
     def __init__(self, input_directory, output_directory, number_of_frames):
         self.video_file_paths = glob.glob(join(input_directory, '*.mp4'))
@@ -42,6 +45,9 @@ class ImageGenerator:
 
 
 if __name__ == "__main__":
+    """
+    Example Usage: python3 generate_training_data.py --input test/videos/ --output test/ --frames 10
+    """
     args = argparse.ArgumentParser()
     args.add_argument("--input", help="Path to video directory.")
     args.add_argument("--output", help="Path to image directory.")
