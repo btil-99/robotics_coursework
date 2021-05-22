@@ -1,4 +1,3 @@
-import sys
 import rclpy
 import transformations
 from gazebo_msgs.srv import SpawnEntity
@@ -25,21 +24,24 @@ def inject(xml: str, initial_pose: Pose):
     if future.result() is not None:
         node.get_logger().info('response: %r' % future.result())
     else:
-        raise RuntimeError('exception while calling service: %r' % future.exception())
+        raise RuntimeError(
+            'exception while calling service: %r'
+            % future.exception())
 
     node.destroy_node()
     rclpy.shutdown()
 
-f = open('./tello_1.urdf', 'r')
 
-p = Pose()
-p.position.x = float(1)
-p.position.y = float(0)
-p.position.z = float(0)
-q = transformations.quaternion_from_euler(0, 0, float(0))
-p.orientation.w = q[0]
-p.orientation.x = q[1]
-p.orientation.y = q[2]
-p.orientation.z = q[3]
+tello_drone_file = open('./tello_1.urdf', 'r')
 
-inject(f.read(), p)
+pose = Pose()
+pose.position.x = float(1)
+pose.position.y = float(0)
+pose.position.z = float(0)
+quaternion = transformations.quaternion_from_euler(0, 0, float(0))
+pose.orientation.w = quaternion[0]
+pose.orientation.x = quaternion[1]
+pose.orientation.y = quaternion[2]
+pose.orientation.z = quaternion[3]
+
+inject(tello_drone_file.read(), pose)
