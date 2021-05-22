@@ -101,7 +101,7 @@ class ObjectDetection:
         self.category_index = label_map_util.create_category_index(
             self.categories)
 
-    def get_object_detection_image(self, cv_image):
+    def get_detection_image(self, cv_image):
         """
         Runs object detection model and generates results along with
         visable borders around the detected entity and shows this image.
@@ -117,7 +117,7 @@ class ObjectDetection:
         detections, predictions_dict, shapes = self.detect_function(
             input_tensor)
 
-        drawcai(  # Draws shapes onto CV RGB Image.
+        drawcai(  # Draws person object shapes onto CV RGB Image.
             cv_image,
             detections['detection_boxes'][0].numpy(),
             detections['detection_classes'][0].numpy().astype(np.uint32),
@@ -127,4 +127,5 @@ class ObjectDetection:
         cv2.imshow("Drone Camera", cv_image)
         cv2.waitKey(1)
 
-        return predictions_dict
+        # Returns person object detection probability score.
+        return detections['detection_scores'][0].numpy()
