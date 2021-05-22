@@ -20,22 +20,33 @@ class DroneNode(Node):
         self.logger = self.get_logger()
 
         # Dictionary object to each room corner.
-        self.room_direction = {
-            'top-left': [1.7, 1.7],
-            'top-right': [1.7, -1.7],
-            'down-left': [-1.7, 1.7],
-            'down-right': [-1.7, -1.7]
-        }
+        # self.room_direction = {
+        #     'top-left': [1.7, 1.7],
+        #     'top-right': [1.7, -1.7],
+        #     'down-left': [-1.7, 1.7],
+        #     'down-right': [-1.7, -1.7]
+        # }
 
-        self.drone_turn = radians(90)
-        self.current_room_direction = None
+        self.room_directions = [
+            [1.7, 1.7],
+            [-1.7, -1.7],
+            [-1.7, 1.7],
+            [1.7, -1.7]
+        ]
+        self.person_location = None
+
+        self.target_time = None
+        self.detection_score = None
+        self.drone_speed = 0.05
         self.has_initialised = False
-
+        self.drone_turn = radians(90)
+        self.count = 0
+        self.person_found = False
         # SUBSCRIBERS
-        self.subscription = self.create_subscription(
+        self.image_subscription = self.create_subscription(
             Image,
             '/drone1/image_raw',
-            self.listener_callback,
+            self.image_callback,
             10)
 
         # PUBLISHERS
@@ -44,18 +55,18 @@ class DroneNode(Node):
             '/drone1/cmd_vel',
             10)
 
-    def listener_callback(self, image_message):
+    def image_callback(self, image_message):
 
         cv_image = self.bridge.imgmsg_to_cv2(
             image_message, desired_encoding='bgr8')
 
-        self.object_detection.get_object_detection_image(
+        self.detection_score = self.object_detection.get_detection_image(
             cv_image)
 
-        self.locate_person()
+        if not self.person_found:
+            self.locate_person()
 
     def locate_person(self):
-        speed = 0.1
         twist = geometry_msgs.msg.Twist()
 
         if not self.has_initialised:
@@ -63,30 +74,51 @@ class DroneNode(Node):
                 '''Drone initialised. Starting via
                 moving to top left position.''')
 
-            twist.angular.z = (self.drone_turn*0.1) / 2
-
-            self.current_room_direction = 'top-left'
+            twist.angular.z = (self.drone_turn * self.drone_speed) / 2
             self.has_initialised = True
         else:
-            self.logger.info(
-                f'''Rotating drone to {self.current_room_direction}.''')
+            if self.detection_score[0] < 0.99:
+                twist.angular.z = self.drone_turn * self.drone_speed
+            else:
+                self.person_location = self.room_directions[self.count]
+                print('Person Found!')
+                self.twist_publisher.publish(geometry_msgs.msg.Twist())
+                self.person_found = True
+                print(self.person_location)
 
-            twist.angular.z = self.drone_turn * 0.1
+        if self.person_location is None:
+            if self.target_time is None:
+                self.target_time = time.time() + 6
+            if time.time() >= self.target_time:
+                # count increases every time drone passes a corner
+                # and person is not found.
+                self.count += 1
+                print(self.count)
+                self.target_time = time.time() + 6
+        else:
+            print(self.person_location)
 
         self.twist_publisher.publish(twist)
-        time.sleep(5.0)
-
-        self.twist_publisher.publish(geometry_msgs.msg.Twist())
-        time.sleep(5.0)
 
     def rotate_drone(self):
         """
         Rotates drone within clock-wise direction along the
         Z axis (yaw).
         """
+
         twist = geometry_msgs.msg.Twist()
-        twist.angular.z = 0.1  # Radians per second.
-        self.twist_publisher.publish(twist)
+        twist.angular.z = self.drone_speed   # Radians per second.
+        if self.target_time is None:
+            self.logger.info('Timer initialising.')
+            self.target_time = time.time() + 21
+            self.twist_publisher.publish(twist)
+
+        if time.time() >= self.target_time:
+            self.logger.info('Drone is facing top of the room.')
+            self.twist_publisher.publish(geometry_msgs.msg.Twist())
+            time.sleep(5)
+            self.twist_publisher.publish(twist)
+            self.target_time = time.time() + 20
 
 
 rclpy.init()
