@@ -10,7 +10,7 @@ import time
 
 class DroneNode(Node):
     def __init__(self):
-        super().__init__('drone_controller')
+        super().__init__('drone_node')
 
         self.bridge = CvBridge()
         self.object_detection = ObjectDetection(
