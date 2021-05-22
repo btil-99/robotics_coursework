@@ -28,7 +28,6 @@ class DroneNode(Node):
         }
 
         self.drone_turn = radians(90)
-
         self.current_room_direction = None
         self.has_initialised = False
 
@@ -56,6 +55,7 @@ class DroneNode(Node):
         self.locate_person()
 
     def locate_person(self):
+        speed = 0.1
         twist = geometry_msgs.msg.Twist()
 
         if not self.has_initialised:
@@ -63,7 +63,7 @@ class DroneNode(Node):
                 '''Drone initialised. Starting via
                 moving to top left position.''')
 
-            twist.angular.z = self.drone_turn / 2
+            twist.angular.z = (self.drone_turn*0.1) / 2
 
             self.current_room_direction = 'top-left'
             self.has_initialised = True
@@ -71,13 +71,13 @@ class DroneNode(Node):
             self.logger.info(
                 f'''Rotating drone to {self.current_room_direction}.''')
 
-            twist.angular.z = self.drone_turn
+            twist.angular.z = self.drone_turn * 0.1
 
         self.twist_publisher.publish(twist)
-        time.sleep(1.0)
+        time.sleep(5.0)
 
         self.twist_publisher.publish(geometry_msgs.msg.Twist())
-        time.sleep(1.0)
+        time.sleep(5.0)
 
     def rotate_drone(self):
         """
