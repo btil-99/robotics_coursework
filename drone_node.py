@@ -3,7 +3,7 @@ from rclpy.node import Node
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
 import geometry_msgs.msg
-# from drone_object_detection import ObjectDetection
+from drone_object_detection import ObjectDetection
 from math import radians
 import time
 
@@ -13,10 +13,10 @@ class DroneNode(Node):
         super().__init__('drone_controller')
 
         self.bridge = CvBridge()
-        # self.object_detection = ObjectDetection(
-        #     pipeline_config='./train_person.config',
-        #     model_path='./person_model/ckpt-3',
-        #     label_map_path='./datasets/label_map.pbtxt')
+        self.object_detection = ObjectDetection(
+            pipeline_config='./train_person.config',
+            model_path='./person_model/ckpt-3',
+            label_map_path='./datasets/label_map.pbtxt')
         self.logger = self.get_logger()
 
         # Dictionary object to each room corner.
@@ -30,7 +30,6 @@ class DroneNode(Node):
         self.drone_turn = radians(90)
 
         self.current_room_direction = None
-        # self.room_turn = radians(x)
         self.has_initialised = False
 
         # SUBSCRIBERS
@@ -51,35 +50,34 @@ class DroneNode(Node):
         cv_image = self.bridge.imgmsg_to_cv2(
             image_message, desired_encoding='bgr8')
 
-        # self.object_detection.get_object_detection_image(
-        #     cv_image)
+        self.object_detection.get_object_detection_image(
+            cv_image)
 
         self.locate_person()
 
     def locate_person(self):
         twist = geometry_msgs.msg.Twist()
 
-        if self.has_initialised:
+        if not self.has_initialised:
             self.logger.info(
                 '''Drone initialised. Starting via
                 moving to top left position.''')
 
             twist.angular.z = self.drone_turn / 2
-            self.twist_publisher.publish(twist)
 
             self.current_room_direction = 'top-left'
-
-            time.sleep(1.0)
-            self.twist_publisher.publish(geometry_msgs.msg.Twist())
             self.has_initialised = True
         else:
             self.logger.info(
                 f'''Rotating drone to {self.current_room_direction}.''')
 
             twist.angular.z = self.drone_turn
-            self.twist_publisher.publish(twist)
 
-            time.sleep(1.0)
+        self.twist_publisher.publish(twist)
+        time.sleep(1.0)
+
+        self.twist_publisher.publish(geometry_msgs.msg.Twist())
+        time.sleep(1.0)
 
     def rotate_drone(self):
         """
