@@ -1,7 +1,7 @@
-import sys
-from tello_msgs.srv import TelloAction
 import rclpy
 from rclpy.node import Node
+from tello_msgs.srv import TelloAction
+
 
 class ClientAsync(Node):
     def __init__(self):
