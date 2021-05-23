@@ -3,7 +3,7 @@ from rclpy.node import Node
 from tello_msgs.srv import TelloAction
 
 
-class ClientAsync(Node):
+class DroneClient(Node):
     def __init__(self):
         super().__init__('client')
         self.client = self.create_client(TelloAction, '/drone1/tello_action')
@@ -16,16 +16,17 @@ class ClientAsync(Node):
         return self.client.call_async(self.req)
 
 
-rclpy.init()
+if __name__ == '__main__':
+    rclpy.init()
 
-client = ClientAsync()
-service_return = client.send_request('takeoff')
+    client = DroneClient()
+    service_return = client.send_request('takeoff')
 
-while rclpy.ok():
-    rclpy.spin_once(client)
-    if service_return.done():
-        response = service_return.result()
-        break
+    while rclpy.ok():
+        rclpy.spin_once(client)
+        if service_return.done():
+            response = service_return.result()
+            break
 
-client.destroy_node()
-rclpy.shutdown()
+    client.destroy_node()
+    rclpy.shutdown()
