@@ -17,6 +17,7 @@ rosidl_generate_interfaces(
   "msg/MyData.msg"
   "srv/MyService.srv"
   "srv/Goal.srv"
+  "srv/Location.srv"
 )
 
 ament_package()
