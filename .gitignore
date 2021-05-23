@@ -5,3 +5,4 @@ log/
 .vscode/
 models/
 person_model/
+__pycache__
