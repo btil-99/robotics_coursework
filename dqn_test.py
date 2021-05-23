@@ -25,7 +25,7 @@ from tensorflow.keras.optimizers import Adam
 
 import json
 import numpy
-import os
+from os.path import join
 import random
 import sys
 import time
@@ -38,7 +38,7 @@ from turtlebot3_msgs.srv import Dqn
 tf.config.set_visible_devices([], 'GPU')
 # gpus = tf.config.list_physical_devices('GPU')
 # tf.config.set_visible_devices(gpus[0], 'GPU')
-strategy = tf.distribute.get_strategy() # works on CPU and single GPU
+strategy = tf.distribute.get_strategy()  # works on CPU and single GPU
 
 
 class DQNTest(Node):
@@ -69,8 +69,15 @@ class DQNTest(Node):
         self.model = self.create_qnetwork()
 
         # Load saved models
-        self.model.set_weights(load_model('stage2_episode2600.h5').get_weights())
-        with open('stage2_episode2600.json') as outfile:
+        results_directory = 'trained_results'
+        self.model.set_weights(
+            load_model(join(
+                results_directory,
+                'stage2_episode2600.h5')).get_weights())
+
+        with open(join(
+            results_directory,
+            'stage2_episode2600.json')) as outfile:
             param = json.load(outfile)
             self.epsilon = param.get('epsilon')
 
@@ -85,9 +92,9 @@ class DQNTest(Node):
         ************************************************************"""
         self.process()
 
-    """*******************************************************************************
+    """****************************************************************
     ** Callback functions and relevant functions
-    *******************************************************************************"""
+    ****************************************************************"""
     def process(self):
         global_step = 0
 
@@ -120,7 +127,8 @@ class DQNTest(Node):
                 req.action = action
                 req.init = init
                 while not self.dqn_com_client.wait_for_service(timeout_sec=1.0):
-                    self.get_logger().info('service not available, waiting again...')
+                    self.get_logger().info(
+                        'service not available, waiting again...')
 
                 future = self.dqn_com_client.call_async(req)
 
@@ -136,7 +144,8 @@ class DQNTest(Node):
                             init = False
                         else:
                             self.get_logger().error(
-                                'Exception while calling service: {0}'.format(future.exception()))
+                                'Exception while calling service: {0}'.format(
+                                    future.exception()))
                         break
 
                 # While loop rate
@@ -167,4 +176,3 @@ rclpy.spin(dqn_test)
 
 dqn_test.destroy()
 rclpy.shutdown()
-
