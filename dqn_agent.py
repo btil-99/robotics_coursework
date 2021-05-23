@@ -19,7 +19,6 @@ import collections
 import datetime
 import json
 import math
-import os
 import random as rnd
 import sys
 import time
@@ -45,7 +44,8 @@ dqn_reward_log_dir = 'logs/' + current_time
 # tf.config.set_visible_devices(gpus[0], 'GPU')
 
 tf.config.set_visible_devices([], 'GPU')
-strategy = tf.distribute.get_strategy() # works on CPU and single GPU
+strategy = tf.distribute.get_strategy()  # works on CPU and single GPU
+
 
 class DQNMetric(tf.keras.metrics.Metric):
 
@@ -65,8 +65,9 @@ class DQNMetric(tf.keras.metrics.Metric):
         self.loss.assign(0)
         self.episode_step.assign(0)
 
+
 class DQNAgent(Node):
-    def __init__(self, stage):
+    def __init__(self):
         super().__init__('dqn_agent')
 
         # Stage
@@ -124,8 +125,8 @@ class DQNAgent(Node):
         self.process()
 
     def process(self):
-        
-        #environment init
+
+        # environment init
         while not self.make_environment_client.wait_for_service(timeout_sec=1.0):
             print('Environment client ...')
         self.make_environment_client.call_async(Empty.Request())
