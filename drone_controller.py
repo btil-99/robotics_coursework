@@ -130,14 +130,13 @@ class DroneController(Node):
     def location_async_request(self):
         while not self.location_client.wait_for_service(timeout_sec=1.0):
             self.logger.info(
-                '''Location service not
-                 available, waiting again...''')
+                'Location service not available, waiting again...')
 
         self.logger.info('Submitting location of person to turtlebot.')
-        request = Location().Request()
+        request = Location.Request()
         request.location_x, request.location_y = self.person_location
         # Submit an Asynchronous request to the location service to invoke
-        # the DQN Gazebo node.
+        # the DQN Gazebo services.
         self.location_client.call_async(request)
 
 
