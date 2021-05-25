@@ -20,44 +20,72 @@ from rclpy.node import Node
 from rclpy.callback_groups import MutuallyExclusiveCallbackGroup
 from gazebo_msgs.srv import DeleteEntity, SpawnEntity
 from std_srvs.srv import Empty
-from my_msgs.srv import Goal
+from my_msgs.srv import Goal, Location
 from geometry_msgs.msg import Pose
-
-import os
-import random
 import sys
 
-#a node to generate goals
+
+# A node to generate goals.
 class GazeboInterface(Node):
-    def __init__(self, stage):
+    def __init__(self, task_number):
         super().__init__('gazebo_interface')
-        self.stage = int(stage)
+        self.target_position = None
 
         # Read the 'Goal' Entity Model
         self.entity_name = 'Goal'
         self.entity = open('./goal_box/model.sdf', 'r').read()
 
-        # initial entity(Goal) position
+        # Initial entity(Goal) position
         self.entity_pose_x = 0.5
         self.entity_pose_y = 0.0
 
-        #Initialize clients
-        self.delete_entity_client = self.create_client(DeleteEntity, 'delete_entity')
-        self.spawn_entity_client = self.create_client(SpawnEntity, 'spawn_entity')
-        self.reset_simulation_client = self.create_client(Empty, 'reset_simulation')
+        # Parse task chosen as correct type.
+        self.task_number = int(task_number)
+        self.goal_list = [
+            [1.7, 1.7],
+            [-1.7, -1.7],
+            [1.7, -1.7],
+            [-1.7, 1.7],
+            [0.0, 0.0]
+        ]
+
+        # Set invoke flag so services are only called once.
+        self.invoked = False
+
+        # Initialize clients
+        self.delete_entity_client = self.create_client(
+            DeleteEntity,
+            'delete_entity')
+        self.spawn_entity_client = self.create_client(
+            SpawnEntity,
+            'spawn_entity')
+        self.reset_simulation_client = self.create_client(
+            Empty,
+            'reset_simulation')
 
         # Initialize services
         self.callback_group = MutuallyExclusiveCallbackGroup()
-        self.initialize_env_service = self.create_service(Goal, 'initialize_env', self.initialize_env_callback,callback_group=self.callback_group)
-        self.task_succeed_service = self.create_service(Goal, 'task_succeed', self.task_succeed_callback, callback_group=self.callback_group)
-        self.task_failed_service = self.create_service(Goal, 'task_failed', self.task_failed_callback,callback_group=self.callback_group)
+
+        if self.task_number == 1:
+            self.initialise_services()
+
+        if self.task_number == 2:
+            self.location_service = self.create_service(
+                Location,
+                'person_location',
+                self.location_callback)
+
+            self.get_logger().info('Initialised Location Service.')
+            self.get_logger().info(
+                'Listening for location to invoke DQN gazebo services.')
 
     def reset_simulation(self):
         reset_req = Empty.Request()
 
         # check connection to the service server
         while not self.reset_simulation_client.wait_for_service(timeout_sec=1.0):
-            self.get_logger().warn('service for reset_simulation is not available, waiting ...')
+            self.get_logger().warn(
+                'service for reset_simulation is not available, waiting ...')
 
         self.reset_simulation_client.call_async(reset_req)
 
@@ -67,7 +95,8 @@ class GazeboInterface(Node):
 
         # check connection to the service server
         while not self.delete_entity_client.wait_for_service(timeout_sec=1.0):
-            self.get_logger().warn('service for delete_entity is not available, waiting ...')
+            self.get_logger().warn(
+                'service for delete_entity is not available, waiting ...')
 
         future = self.delete_entity_client.call_async(delete_req)
         rclpy.spin_until_future_complete(self, future)
@@ -84,14 +113,54 @@ class GazeboInterface(Node):
 
         # check connection to the service server
         while not self.spawn_entity_client.wait_for_service(timeout_sec=1.0):
-            self.get_logger().warn('service for spawn_entity is not available, waiting ...')
+            self.get_logger().warn(
+                'service for spawn_entity is not available, waiting ...')
 
         future = self.spawn_entity_client.call_async(spawn_req)
         rclpy.spin_until_future_complete(self, future)
 
+    def initialise_services(self):
+        """
+        This method is only intended to be called once.
+        """
+        self.invoked = True
+        self.get_logger().info('Invoking DQN gazebo services.')
+        self.initialize_env_service = self.create_service(
+            Goal,
+            'initialize_env',
+            self.initialize_env_callback,
+            callback_group=self.callback_group)
+
+        self.task_succeed_service = self.create_service(
+            Goal,
+            'task_succeed',
+            self.task_succeed_callback,
+            callback_group=self.callback_group)
+
+        self.task_failed_service = self.create_service(
+            Goal,
+            'task_failed',
+            self.task_failed_callback,
+            callback_group=self.callback_group)
+
+    def location_callback(self, request, response):
+
+        # Create location list object.
+        location = [round(request.location_x, 2), round(request.location_y, 2)]
+        self.get_logger().info(
+            'Request received. Location of person: {}.'.format(location))
+
+        # Check if services have been invoked.
+        if not self.invoked:
+            self.initialise_services()
+            self.entity_pose_x, self.entity_pose_y = location
+        return response
+
     def task_succeed_callback(self, request, response):
         self.delete_entity()
-        self.generate_goal_pose()
+        if self.task_number == 1:
+            self.generate_goal_pose()
+
         self.spawn_entity()
         response.pose_x = self.entity_pose_x
         response.pose_y = self.entity_pose_y
@@ -102,7 +171,9 @@ class GazeboInterface(Node):
     def task_failed_callback(self, request, response):
         self.delete_entity()
         self.reset_simulation()
-        self.generate_goal_pose()
+        if self.task_number == 1:
+            self.generate_goal_pose()
+
         self.spawn_entity()
         response.pose_x = self.entity_pose_x
         response.pose_y = self.entity_pose_y
@@ -121,22 +192,20 @@ class GazeboInterface(Node):
         return response
 
     def generate_goal_pose(self):
-        goal_pose_list = [[1.7, 1.7], [-1.7, -1.7], [1.7, -1.7], [-1.7, 1.7], [0.0, 0.0]]
-
         if self.entity_pose_x == 0.5 and self.entity_pose_y == 0.0:
             index = 0
         else:
-            index = goal_pose_list.index([self.entity_pose_x, self.entity_pose_y])
-            if index == (len(goal_pose_list) - 1):
+            index = self.goal_list.index([
+                self.entity_pose_x,
+                self.entity_pose_y])
+
+            if index == (len(self.goal_list) - 1):
                 index = 0
             else:
                 index += 1
 
-        # self.entity_pose_x = random.randrange(-20, 20) / 10
-        # self.entity_pose_y = random.randrange(-20, 20) / 10
-        
-        self.entity_pose_x = goal_pose_list[index][0]
-        self.entity_pose_y = goal_pose_list[index][1]
+        self.entity_pose_x = self.goal_list[index][0]
+        self.entity_pose_y = self.goal_list[index][1]
 
 
 def main(args=sys.argv[1]):
@@ -146,6 +215,7 @@ def main(args=sys.argv[1]):
         rclpy.spin_once(gazebo_interface, timeout_sec=0.1)
 
     rclpy.shutdown()
+
 
 if __name__ == '__main__':
     main()
