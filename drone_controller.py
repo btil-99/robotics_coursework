@@ -21,20 +21,15 @@ class DroneController(Node):
         self.logger = self.get_logger()
 
         # Dictionary object to each room corner.
-        # self.room_direction = {
-        #     'top-left': [1.7, 1.7],
-        #     'top-right': [1.7, -1.7],
-        #     'down-left': [-1.7, 1.7],
-        #     'down-right': [-1.7, -1.7]
-        # }
+        self.room_directions = {
+            'top-left': [1.7, 1.7],
+            'down-left': [-1.7, -1.7],
+            'down-right': [-1.7, 1.7],
+            'top-right': [1.7, -1.7]
+        }
 
-        self.room_directions = [
-            [1.7, 1.7],
-            [-1.7, -1.7],
-            [-1.7, 1.7],
-            [1.7, -1.7]
-        ]
-        self.person_location = None
+        self.location_coordinates = None
+        self.location_name = None
 
         self.target_time = None
         self.detection_score = None
@@ -69,7 +64,7 @@ class DroneController(Node):
         self.detection_score = self.object_detection.get_detection_image(
             cv_image)
 
-        if self.person_location is None:
+        if self.location_coordinates is None:
             self.locate_person()
 
     def locate_person(self):
@@ -77,8 +72,10 @@ class DroneController(Node):
 
         twist = self.rotate_and_locate_person(twist)
 
-        self.environment_rotation_timer(6)  # 6 seconds.
+        # 6 second timer to traverse each corner.
+        self.environment_rotation_timer(6)
 
+        # Finally, publish drones rotational force.
         self.twist_publisher.publish(twist)
 
     def rotate_and_locate_person(self, twist):
@@ -89,6 +86,9 @@ class DroneController(Node):
 
             # Rotate 45 degrees to reach first corner.
             twist.angular.z = (self.drone_turn * self.drone_speed) / 2
+
+            # Set current location name.
+            self.location_name = self.get_location_name()
 
             # Set flag to start full rotation.
             self.has_initialised = True
@@ -101,10 +101,12 @@ class DroneController(Node):
                 twist.angular.z = self.drone_turn * self.drone_speed
             else:
                 # Set location of person.
-                self.person_location = self.room_directions[self.count]
+                self.location_coordinates = self.room_directions.get(
+                    self.location_name)
+
                 self.logger.info(
-                    'Person Found! Location: {}'
-                    .format(self.person_location))
+                    'Person Found! Location: {} -> {}'
+                    .format(self.location_name, self.location_coordinates))
                 self.location_async_request()
 
         return twist
@@ -124,7 +126,19 @@ class DroneController(Node):
 
             # Count increases every time drone passes
             # a corner and person is not found.
+            # Name of corner is updated.
+
+            self.logger.info('Drone passed corner {}'.format(
+                self.location_name))
+
+            # Count is incremented to state it has passed a new corner.
             self.count += 1
+
+            # Cycle back to beginning of dictionary is reached beyond the end.
+            if self.count >= len(list(self.room_directions)):
+                self.count = 0
+
+            self.location_name = self.get_location_name()
             self.target_time = time.time() + timer
 
     def location_async_request(self):
@@ -134,10 +148,17 @@ class DroneController(Node):
 
         self.logger.info('Submitting location of person to turtlebot.')
         request = Location.Request()
-        request.location_x, request.location_y = self.person_location
+        request.location_x, request.location_y = self.location_coordinates
         # Submit an Asynchronous request to the location service to invoke
         # the DQN Gazebo services.
         self.location_client.call_async(request)
+
+    def get_location_name(self):
+        """
+        Method to retrieve name of corner in room.
+        :return: Name of corner.
+        """
+        return list(self.room_directions)[self.count]
 
 
 rclpy.init()
