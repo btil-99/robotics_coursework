@@ -80,7 +80,7 @@ class DQNAgent(Node):
 
         # DQN hyperparameter
         self.discount_factor = 0.99
-        self.learning_rate = 0.0007  # 0.001
+        self.learning_rate = 0.0007
         self.epsilon = 1.0
         self.step_counter = 0
         self.epsilon_decay = 20000 * self.stage
@@ -301,9 +301,9 @@ class DQNAgent(Node):
             self.update_target_model()
 
 
-def main(args=sys.argv[1]):
-    rclpy.init(args=args)
-    dqn_agent = DQNAgent(args)
+def main():
+    rclpy.init()
+    dqn_agent = DQNAgent()
     rclpy.spin(dqn_agent)
 
     dqn_agent.destroy_node()
