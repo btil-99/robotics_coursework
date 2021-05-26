@@ -64,19 +64,17 @@ class DroneController(Node):
         self.detection_score = self.object_detection.get_detection_image(
             cv_image)
 
+        # If the persons location has not been determined, find them.
         if self.location_coordinates is None:
-            self.locate_person()
+            twist = geometry_msgs.msg.Twist()
 
-    def locate_person(self):
-        twist = geometry_msgs.msg.Twist()
+            twist = self.rotate_and_locate_person(twist)
 
-        twist = self.rotate_and_locate_person(twist)
+            # 6 second timer to traverse each corner.
+            self.environment_rotation_timer(6)
 
-        # 6 second timer to traverse each corner.
-        self.environment_rotation_timer(6)
-
-        # Finally, publish drones rotational force.
-        self.twist_publisher.publish(twist)
+            # Finally, publish drones rotational force.
+            self.twist_publisher.publish(twist)
 
     def rotate_and_locate_person(self, twist):
         if not self.has_initialised:

@@ -23,12 +23,15 @@ from std_srvs.srv import Empty
 from my_msgs.srv import Goal, Location
 from geometry_msgs.msg import Pose
 import sys
+import random
 
 
 # A node to generate goals.
 class GazeboInterface(Node):
     def __init__(self, task_number):
         super().__init__('gazebo_interface')
+
+        self.train_mode = False
         self.target_position = None
 
         # Read the 'Goal' Entity Model
@@ -192,20 +195,28 @@ class GazeboInterface(Node):
         return response
 
     def generate_goal_pose(self):
-        if self.entity_pose_x == 0.5 and self.entity_pose_y == 0.0:
-            index = 0
-        else:
-            index = self.goal_list.index([
-                self.entity_pose_x,
-                self.entity_pose_y])
 
-            if index == (len(self.goal_list) - 1):
+        # Train the DQN agent on random coordinates.
+        if self.train_mode:
+            self.entity_pose_x = random.randrange(-20, 20) / 10
+            self.entity_pose_y = random.randrange(-20, 20) / 10
+
+        # Test the agent on the sequential coordinates given in task 1.
+        else:
+            if self.entity_pose_x == 0.5 and self.entity_pose_y == 0.0:
                 index = 0
             else:
-                index += 1
+                index = self.goal_list.index([
+                    self.entity_pose_x,
+                    self.entity_pose_y])
 
-        self.entity_pose_x = self.goal_list[index][0]
-        self.entity_pose_y = self.goal_list[index][1]
+                if index == (len(self.goal_list) - 1):
+                    index = 0
+                else:
+                    index += 1
+
+            self.entity_pose_x = self.goal_list[index][0]
+            self.entity_pose_y = self.goal_list[index][1]
 
 
 def main(args=sys.argv[1]):

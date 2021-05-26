@@ -26,8 +26,6 @@ from tensorflow.keras.optimizers import Adam
 import json
 import numpy
 from os.path import join
-import random
-import sys
 import time
 
 import rclpy
