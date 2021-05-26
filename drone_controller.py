@@ -23,8 +23,8 @@ class DroneController(Node):
         # Dictionary object to each room corner.
         self.room_directions = {
             'top-left': [1.7, 1.7],
-            'down-left': [-1.7, -1.7],
-            'down-right': [-1.7, 1.7],
+            'down-left': [-1.7, 1.7],
+            'down-right': [-1.7, -1.7],
             'top-right': [1.7, -1.7]
         }
 
